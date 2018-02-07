@@ -11,7 +11,7 @@ class Future():
     def add_done_callback(self, fn):
         self._callbacks.append(fn)
 
-    def set_result(self, result):  
+    def set_result(self, result):
         self.result = result
         print('res', self.result)
         for fn in self._callbacks:
