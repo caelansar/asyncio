@@ -13,7 +13,7 @@ class Future():
 
     def set_result(self, result):
         self.result = result
-        print('res', self.result)
+        print('set_result:', self.result)
         for fn in self._callbacks:
             if fn: fn(self)
 
@@ -47,35 +47,45 @@ class Client():
             print('connected')
         f = Future()
 
-        def on_connection():
+        def writable():
             f.set_result(None)
 
-        selector.register(self.sock, selectors.EVENT_WRITE, on_connection)
+        selector.register(self.sock, selectors.EVENT_WRITE, writable)
+        print(',,,', f.result)
         yield f
         selector.unregister(self.sock)
+        print('send a request')
         self.sock.send(b'GET / HTTP/1.0\r\nHost: www.baidu.com\r\n\r\n')
 
         while True:
             f = Future()
 
-            def on_read():
-                f.set_result(self.sock.recv(1024))
+            def readable():
+                data = self.sock.recv(1024)
+                f.set_result(data)
 
-            selector.register(self.sock, selectors.EVENT_READ, on_read)
+            selector.register(self.sock, selectors.EVENT_READ, readable)
+
+            print('suspend...........')
             chunk = yield f
+            print('start-up..........')
+            print('f.result:', f.result)
             selector.unregister(self.sock)
             if chunk:
                 self.resp += chunk
             else:
+                print('\nresponse',self.resp.decode())
                 break
 
 c = Client()
 Task(c.connect())
+print('.....................')
 while True:
     try:
         event = selector.select()
         for key, mask in event:
             callback = key.data
+            print('call:', callback.__name__)
             callback()
 
     except OSError:
